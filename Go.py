@@ -1,13 +1,16 @@
-import g02 as go
 import pygame as pg
+from Game_menu import Game_menu
+import Game
 
-def main():
+
+def start_game() -> None:
     while True:
-        game = go.Game(size=8, mode="Игрок против Игрока")  # Временные значения
+        game = Game.Game(size=8, mode="Игрок против Игрока")  # Временные значения
         game.init_pygame()
+        game_menu = Game_menu()
 
-        selected_size, selected_mode = game.show_size_mode_selection_menu()
-        game = go.Game(size=selected_size, mode=selected_mode)
+        selected_size, selected_mode = Game_menu.show_main_menu(game_menu)
+        game = Game.Game(size=selected_size, mode=selected_mode)
         game.init_pygame()
         game.clear_screen()
         game.draw()
@@ -20,4 +23,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    start_game()
