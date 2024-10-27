@@ -220,15 +220,7 @@ class Game:
             print("Компьютер не смог найти ход.")  # Для отладки
 
     def _simulate_captures(self, temp_board: np.ndarray, col: int, row: int, opponent_color: str) -> int:
-        """
-        Симулирует захваты камней противника после размещения камня на временной доске.
 
-        :param temp_board: Копия доски после симуляции хода.
-        :param col: Столбец размещения камня.
-        :param row: Строка размещения камня.
-        :param opponent_color: Цвет камней противника ("white" или "black").
-        :return: Количество захваченных камней противника.
-        """
         captures = 0
         opponent_groups = self.logic.get_stone_groups(temp_board, opponent_color)
         for group in opponent_groups:
@@ -239,9 +231,7 @@ class Game:
         return captures
 
     def _evaluate_move_captures(self, temp_board: np.ndarray, col: int, row: int, color: str) -> int:
-        """
-        Оценивает количество камней соперника, которые могут быть захвачены этим ходом.
-        """
+
         opponent_color = "white" if color == "black" else "black"
         capture_count = 0
 
@@ -260,21 +250,13 @@ class Game:
         return capture_count
 
     def _count_liberties(self, temp_board: np.ndarray, col: int, row: int, color: str) -> int:
-        """
-        Считает количество либертей для группы камней, в которую был сделан ход.
-        """
+
         group = self.logic.get_group(temp_board, (col, row))
         liberties = self.logic.count_liberties(temp_board, group)
         return liberties
 
     def get_adjacent_positions(self, positions: Set[Tuple[int, int]], size: int) -> Set[Tuple[int, int]]:
-        """
-        Возвращает все уникальные соседние позиции для множества позиций на доске.
 
-        :param positions: Множество кортежей с координатами (col, row).
-        :param size: Размер доски.
-        :return: Множество уникальных соседних позиций.
-        """
         adjacent = set()
 
         for col, row in positions:

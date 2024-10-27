@@ -60,9 +60,7 @@ class Game_logic:
         return nx.connected_components(graph)
 
     def get_group(self, board: np.ndarray, position: Tuple[int, int]) -> Set[Tuple[int, int]]:
-        """
-        Возвращает всю группу камней, связных с данной позицией.
-        """
+
         color = board[position]
         if color == 0:
             return set()
@@ -82,9 +80,6 @@ class Game_logic:
         return group
 
     def count_liberties(self, board: np.ndarray, group: Set[Tuple[int, int]]) -> int:
-        """
-        Считает количество свободных позиций (либертей) для данной группы камней.
-        """
         liberties = set()
         for pos in group:
             for neighbor in self.get_adjacent_positions({pos}, self.size):
@@ -93,13 +88,7 @@ class Game_logic:
         return len(liberties)
 
     def get_adjacent_positions(self, positions: Set[Tuple[int, int]], size: int) -> Set[Tuple[int, int]]:
-        """
-        Возвращает все уникальные соседние позиции для заданного множества позиций на доске.
 
-        :param positions: Множество кортежей (col, row), представляющих позиции на доске.
-        :param size: Размер доски (допустим, квадратная доска).
-        :return: Множество уникальных соседних позиций.
-        """
         adjacent = set()
         for col, row in positions:
             # Проверяем соседние позиции и добавляем их, если они внутри доски
