@@ -3,8 +3,9 @@ import networkx as nx
 import numpy as np
 from typing import List, Tuple, Set, Iterable
 from Settings import *
-
 class Game_logic:
+    def __init__(self, size: int) -> None:
+        self.size = size
     def get_grid_points(self, size: int) -> Tuple[List[Tuple[float, float]], List[Tuple[float, float]]]:
         start_points, end_points = [], []
         xs = np.linspace(BOARD_BORDER, BOARD_WIDTH - BOARD_BORDER, size)
@@ -58,6 +59,61 @@ class Game_logic:
         graph.remove_nodes_from(stones_to_remove)
         return nx.connected_components(graph)
 
+    def get_group(self, board: np.ndarray, position: Tuple[int, int]) -> Set[Tuple[int, int]]:
+        """
+        Возвращает всю группу камней, связных с данной позицией.
+        """
+        color = board[position]
+        if color == 0:
+            return set()
+
+        group = set()
+        stack = [position]
+
+        while stack:
+            current = stack.pop()
+            if current in group:
+                continue
+            group.add(current)
+            for neighbor in self.get_adjacent_positions({current}, self.size):
+                if board[neighbor] == color and neighbor not in group:
+                    stack.append(neighbor)
+
+        return group
+
+    def count_liberties(self, board: np.ndarray, group: Set[Tuple[int, int]]) -> int:
+        """
+        Считает количество свободных позиций (либертей) для данной группы камней.
+        """
+        liberties = set()
+        for pos in group:
+            for neighbor in self.get_adjacent_positions({pos}, self.size):
+                if board[neighbor] == 0:
+                    liberties.add(neighbor)
+        return len(liberties)
+
+    def get_adjacent_positions(self, positions: Set[Tuple[int, int]], size: int) -> Set[Tuple[int, int]]:
+        """
+        Возвращает все уникальные соседние позиции для заданного множества позиций на доске.
+
+        :param positions: Множество кортежей (col, row), представляющих позиции на доске.
+        :param size: Размер доски (допустим, квадратная доска).
+        :return: Множество уникальных соседних позиций.
+        """
+        adjacent = set()
+        for col, row in positions:
+            # Проверяем соседние позиции и добавляем их, если они внутри доски
+            if col > 0:
+                adjacent.add((col - 1, row))  # Слева
+            if col < size - 1:
+                adjacent.add((col + 1, row))  # Справа
+            if row > 0:
+                adjacent.add((col, row - 1))  # Сверху
+            if row < size - 1:
+                adjacent.add((col, row + 1))  # Снизу
+        # Удаляем исходные позиции, чтобы оставить только соседние
+        adjacent.difference_update(positions)
+        return adjacent
     def is_valid_move(self, col: int, row: int, board: np.ndarray) -> bool:
         if col < 0 or col >= board.shape[0]:
             return False

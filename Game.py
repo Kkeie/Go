@@ -7,12 +7,12 @@ import itertools
 import numpy as np
 from Settings import *  # type: ignore
 from MainLogic import Game_logic  # type: ignore
-from typing import List, Tuple, Optional, Dict
+from typing import List, Tuple, Optional, Dict, Set
 
 
 class Game:
     def __init__(self, size: int, mode: str):
-        self.logic: Game_logic = Game_logic()
+        self.logic: Game_logic = Game_logic(size)
         self.board: np.ndarray = np.zeros((size, size))
         self.size: int = size
         self.black_turn: bool = False
@@ -74,23 +74,37 @@ class Game:
         if not self.logic.is_valid_move(col, row, self.board):
             return
 
+        # Устанавливаем камень на доске
         self.board[col, row] = 1 if not self.black_turn else 2
         move_description = f"{'Белые' if not self.black_turn else 'Чёрные'}: {col + 1},{row + 1}"
         self.move_log.insert(0, move_description)
         if len(self.move_log) > 4:
             self.move_log.pop()
 
+        # Обрабатываем захват камней, если есть
         self._handle_captures(col, row)
 
+        # Режим игры
         if self.mode == "Лёгкий":
             if not self.black_turn:
+                # Ход компьютера в "легком" режиме
                 self.black_turn = True
                 self.draw()
                 pygame.time.wait(1000)
                 self._computer_move()
             else:
                 self.black_turn = False
+        elif self.mode == "Сложный":
+            if not self.black_turn:
+                # Ход компьютера в "сложном" режиме
+                self.black_turn = True
+                self.draw()
+                pygame.time.wait(1000)
+                self._smart_computer_move()  # Вызов сложного хода компьютера
+            else:
+                self.black_turn = False
         else:
+            # Если PVP, переключаем ход
             self.black_turn = not self.black_turn
 
         self.draw()
@@ -100,6 +114,7 @@ class Game:
         other_color = "black" if not self.black_turn else "white"
         capture_happened = False
 
+        # Проверка, не захвачены ли камни противника
         for group in list(self.logic.get_stone_groups(self.board, other_color)):
             if self.logic.stone_group_has_no_liberties(self.board, group):
                 capture_happened = True
@@ -109,6 +124,7 @@ class Game:
 
         if not capture_happened:
             group = None
+            # Проверка, захватил ли недавно установленный камень свою собственную группу
             for group in self.logic.get_stone_groups(self.board, self_color):
                 if (col, row) in group:
                     break
@@ -127,13 +143,155 @@ class Game:
             self.board[col, row] = 2
             self._handle_captures(col, row)
 
-            self.move_log.insert(0, f"Чёрные: {col}, {row}")
+            self.move_log.insert(0, f"Чёрные: {col + 1}, {row + 1}")
             self.move_log = self.move_log[:4]
 
             self.draw()
-            self.black_turn = False
+            self.black_turn = False  # Возвращаем ход игроку
 
+    def _smart_computer_move(self) -> None:
+        best_move: Optional[Tuple[int, int]] = None
+        best_score: int = -1  # Начальная оценка
 
+        # Перебор всех возможных ходов
+        for col in range(self.size):
+            for row in range(self.size):
+                if not self.logic.is_valid_move(col, row, self.board):
+                    continue  # Пропускаем недопустимые ходы
+
+                # Симуляция хода: копирование доски и размещение камня
+                temp_board = self.board.copy()
+                temp_board[col, row] = 2  # Черный камень
+
+                # Симуляция захватов камней противника
+                captures = self._simulate_captures(temp_board, col, row, opponent_color="white")
+
+                # Подсчет либертей для группы камней после хода
+                group = self.logic.get_group(temp_board, (col, row))
+                liberties = self.logic.count_liberties(temp_board, group)
+
+                # Оценка хода: приоритет захватов, затем либертей
+                score = captures * 10 + liberties  # Вес захватов больше, чем либертей
+
+                # Выбор хода с наивысшей оценкой
+                if score > best_score:
+                    best_score = score
+                    best_move = (col, row)
+
+        # Если ни один ход не привел к захватам, выбираем ход с максимальными либертями
+        if best_move is None:
+            max_liberties = -1
+            for col in range(self.size):
+                for row in range(self.size):
+                    if not self.logic.is_valid_move(col, row, self.board):
+                        continue
+
+                    # Симуляция хода
+                    temp_board = self.board.copy()
+                    temp_board[col, row] = 2  # Черный камень
+
+                    # Подсчет либертей для группы камней после хода
+                    group = self.logic.get_group(temp_board, (col, row))
+                    liberties = self.logic.count_liberties(temp_board, group)
+
+                    # Выбор хода с наибольшим количеством либертей
+                    if liberties > max_liberties:
+                        max_liberties = liberties
+                        best_move = (col, row)
+
+        # Если ни один из критериев не сработал, выбираем случайный допустимый ход
+        if best_move is None:
+            valid_moves = [(col, row) for col in range(self.size) for row in range(self.size)
+                           if self.logic.is_valid_move(col, row, self.board)]
+            if valid_moves:
+                best_move = random.choice(valid_moves)
+
+        # Совершение выбранного хода
+        if best_move:
+            col, row = best_move
+            self.board[col, row] = 2  # Размещение черного камня
+            self._handle_captures(col, row)  # Обработка захватов
+            self.move_log.insert(0, f"Чёрные: {col + 1}, {row + 1}")
+            if len(self.move_log) > 4:
+                self.move_log.pop()
+            self.draw()  # Обновление экрана
+            self.black_turn = False  # Передача хода игроку
+        else:
+            print("Компьютер не смог найти ход.")  # Для отладки
+
+    def _simulate_captures(self, temp_board: np.ndarray, col: int, row: int, opponent_color: str) -> int:
+        """
+        Симулирует захваты камней противника после размещения камня на временной доске.
+
+        :param temp_board: Копия доски после симуляции хода.
+        :param col: Столбец размещения камня.
+        :param row: Строка размещения камня.
+        :param opponent_color: Цвет камней противника ("white" или "black").
+        :return: Количество захваченных камней противника.
+        """
+        captures = 0
+        opponent_groups = self.logic.get_stone_groups(temp_board, opponent_color)
+        for group in opponent_groups:
+            if self.logic.stone_group_has_no_liberties(temp_board, group):
+                captures += len(group)
+                for i, j in group:
+                    temp_board[i, j] = 0  # Захват камней противника
+        return captures
+
+    def _evaluate_move_captures(self, temp_board: np.ndarray, col: int, row: int, color: str) -> int:
+        """
+        Оценивает количество камней соперника, которые могут быть захвачены этим ходом.
+        """
+        opponent_color = "white" if color == "black" else "black"
+        capture_count = 0
+
+        # Получаем соседние позиции к (col, row)
+        adjacent_positions = self.get_adjacent_positions({(col, row)}, self.size)
+
+        # Получаем все группы камней соперника
+        opponent_groups = self.logic.get_stone_groups(temp_board, opponent_color)
+
+        # Проверяем только те группы, которые прилегают к позиции хода
+        for group in opponent_groups:
+            if group & adjacent_positions:  # Пересекаются ли группы с соседними позициями
+                if self.logic.stone_group_has_no_liberties(temp_board, group):
+                    capture_count += len(group)
+
+        return capture_count
+
+    def _count_liberties(self, temp_board: np.ndarray, col: int, row: int, color: str) -> int:
+        """
+        Считает количество либертей для группы камней, в которую был сделан ход.
+        """
+        group = self.logic.get_group(temp_board, (col, row))
+        liberties = self.logic.count_liberties(temp_board, group)
+        return liberties
+
+    def get_adjacent_positions(self, positions: Set[Tuple[int, int]], size: int) -> Set[Tuple[int, int]]:
+        """
+        Возвращает все уникальные соседние позиции для множества позиций на доске.
+
+        :param positions: Множество кортежей с координатами (col, row).
+        :param size: Размер доски.
+        :return: Множество уникальных соседних позиций.
+        """
+        adjacent = set()
+
+        for col, row in positions:
+            # Проверяем каждую из четырех сторон вокруг позиции
+            if col > 0:
+                adjacent.add((col - 1, row))  # слева
+            if col < size - 1:
+                adjacent.add((col + 1, row))  # справа
+            if row > 0:
+                adjacent.add((col, row - 1))  # сверху
+            if row < size - 1:
+                adjacent.add((col, row + 1))  # снизу
+
+        # Исключаем исходные позиции из списка соседних
+        adjacent.difference_update(positions)
+
+        return adjacent
 
     def _draw_stone_image(self, stone_image: pygame.Surface, board: int) -> None:
         for col, row in zip(*np.where(self.board == board)):
@@ -152,7 +310,7 @@ class Game:
         self.screen.blit(txt, (self.board_offset_x + SCORE_POS[0], self.board_offset_y + SCORE_POS[1]))
 
         turn_msg1 = f"{'Белые' if not self.black_turn else 'Чёрные'} ходят. Нажмите на левую кнопку мыши, чтобы"
-        turn_msg2 = 'поставить камень. Нажмите З, чтобы пропустить ход'
+        turn_msg2 = 'поставить камень. Нажмите ESC, чтобы пропустить ход'
         txt1 = self.font.render(turn_msg1, antialias_on, BLACK)
         txt2 = self.font.render(turn_msg2, antialias_on, BLACK)
         self.screen.blit(txt1, (self.board_offset_x + BOARD_BORDER, self.board_offset_y + 10))
@@ -160,7 +318,8 @@ class Game:
 
         log_text = "Лог ходов: " + ", ".join(self.move_log[:4])
         log_rendered = self.font.render(log_text, antialias_on, BLACK)
-        self.screen.blit(log_rendered, (self.board_offset_x + BOARD_BORDER, self.board_offset_y + BOARD_WIDTH - BOARD_BORDER + 60))
+        self.screen.blit(log_rendered,
+                         (self.board_offset_x + BOARD_BORDER, self.board_offset_y + BOARD_WIDTH - BOARD_BORDER + 60))
 
         esc_button_rect = pygame.Rect(10, 10, 50, 50)
         if self.esc_button_hovered:
@@ -205,8 +364,6 @@ class Game:
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_ESCAPE:
                     return True
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_p:
-                self._pass_turn()
 
         mouse_x, mouse_y = pygame.mouse.get_pos()
         esc_button_rect = pygame.Rect(10, 10, 50, 50)
@@ -220,4 +377,3 @@ class Game:
                 self.draw()
 
         pygame.time.wait(100)
-
