@@ -22,20 +22,6 @@ class Game_logic:
         end_points.extend(list(zip(xs, ys)))
         return start_points, end_points
 
-    def xy_to_colrow(self, x: float, y: float, size: int) -> Tuple[int, int]:
-        inc = (BOARD_WIDTH - 2 * BOARD_BORDER) / (size - 1)
-        x_dist = x - BOARD_BORDER
-        y_dist = y - BOARD_BORDER
-        col = round(x_dist / inc)
-        row = round(y_dist / inc)
-        return col, row
-
-    def colrow_to_xy(self, col: int, row: int, size: int) -> Tuple[int, int]:
-        inc = (BOARD_WIDTH - 2 * BOARD_BORDER) / (size - 1)
-        x = int(BOARD_BORDER + col * inc)
-        y = int(BOARD_BORDER + row * inc)
-        return x, y
-
     def stone_group_has_no_liberties(self, board: np.ndarray, group: Set[Tuple[int, int]]) -> bool:
         for x, y in group:
             if x > 0 and board[x - 1, y] == 0:
@@ -109,6 +95,4 @@ class Game_logic:
         if row < 0 or row >= board.shape[0]:
             return False
         return board[col, row] == 0
-
-
 

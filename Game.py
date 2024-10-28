@@ -8,6 +8,7 @@ import numpy as np
 from Settings import *  # type: ignore
 from MainLogic import Game_logic  # type: ignore
 from typing import List, Tuple, Optional, Dict, Set
+from Point import Point
 
 
 class Game:
@@ -25,6 +26,7 @@ class Game:
         self.move_log: List[str] = []
         self.esc_button_hovered: bool = False
         self.previous_screen: Optional[pygame.Surface] = None
+        self.mouse_pos: Point() = 0
 
     def _calculate_scale_factor(self) -> float:
         return board_scale[self.size]
@@ -56,21 +58,28 @@ class Game:
             pygame.draw.line(self.screen, BLACK, start_point, end_point)
         guide_dots = [3, self.size // 2, self.size - 4]
         for col, row in itertools.product(guide_dots, guide_dots):
-            x, y = self.logic.colrow_to_xy(col, row, self.size)
-            x += self.board_offset_x
-            y += self.board_offset_y
-            gfxdraw.aacircle(self.screen, x, y, DOT_RADIUS, BLACK)
-            gfxdraw.filled_circle(self.screen, x, y, DOT_RADIUS, BLACK)
+            point = Point()
+            point = point.colrow_to_point(col, row, self.size)
+            point.set_x(point.x + self.board_offset_x)
+            point.set_y(point.y + self.board_offset_y)
+            gfxdraw.aacircle(self.screen, point.x, point.y, DOT_RADIUS, BLACK)
+            gfxdraw.filled_circle(self.screen, point.x, point.y, DOT_RADIUS, BLACK)
 
     def _pass_turn(self) -> None:
         self.black_turn = not self.black_turn
         self.draw()
 
     def _handle_stone_placement(self) -> None:
-        x, y = pygame.mouse.get_pos()
+        point = Point()
+        x = 0
+        y = 0
+        if pygame.mouse.get_pressed():
+            x, y = pygame.mouse.get_pos()
         x -= self.board_offset_x
         y -= self.board_offset_y
-        col, row = self.logic.xy_to_colrow(x, y, self.size)
+        point.set_x(x)
+        point.set_y(y)
+        col, row = point.point_to_colrow(self.size)
         if not self.logic.is_valid_move(col, row, self.board):
             return
 
@@ -277,10 +286,12 @@ class Game:
 
     def _draw_stone_image(self, stone_image: pygame.Surface, board: int) -> None:
         for col, row in zip(*np.where(self.board == board)):
-            x, y = self.logic.colrow_to_xy(col, row, self.size)
-            x += self.board_offset_x
-            y += self.board_offset_y
-            self.screen.blit(stone_image, (x - stone_image.get_width() // 2, y - stone_image.get_height() // 2))
+            point = Point()
+            point = point.colrow_to_point(col, row, self.size)
+            point.set_x(point.x + self.board_offset_x)
+            point.set_y(point.y + self.board_offset_y)
+            self.screen.blit(stone_image,
+                             (point.x - stone_image.get_width() // 2, point.y - stone_image.get_height() // 2))
 
     def draw(self) -> None:
         self.clear_screen()
@@ -346,6 +357,9 @@ class Game:
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_ESCAPE:
                     return True
+            if event.type == pygame.KEYDOWN :
+                if event.key == pygame.K_p:
+                    self._pass_turn()
 
         mouse_x, mouse_y = pygame.mouse.get_pos()
         esc_button_rect = pygame.Rect(10, 10, 50, 50)
