@@ -6,10 +6,9 @@ from pygame import gfxdraw
 import itertools
 import numpy as np
 
-from game_menu import Game_menu
 from settings import *
 from main_logic import Game_logic
-from typing import List, Tuple, Optional, Dict, Set, Iterable
+from typing import Optional, Dict, Set, Iterable
 from point import Point
 from rgb import Rgb
 
@@ -21,12 +20,13 @@ class Game:
         self.size: int = size
         self.black_turn: bool = False
         self.prisoners: Dict[str, int] = collections.defaultdict(int)
-        self.start_points: List[Point]
-        self.end_points: List[Point]
-        self.start_points, self.end_points = self.logic.get_grid_points(self.size)
+        self.start_points: list[Point]
+        self.end_points: list[Point]
+        self.start_points, self.end_points = self.logic.get_grid_points(
+            self.size)
         self.mode: str = mode
         self.stone_scale_factor: float = self._calculate_scale_factor()
-        self.move_log: List[str] = []
+        self.move_log: list[str] = []
         self.esc_button_hovered: bool = False
         self.previous_screen: Optional[pygame.Surface] = None
         self.mouse_pos: Point = Point(0, 0)
@@ -40,14 +40,19 @@ class Game:
         screen_info: pygame.display.Info = pygame.display.Info()
         screen_width: int = screen_info.current_w
         screen_height: int = screen_info.current_h
-        self.screen: pygame.Surface = pygame.display.set_mode((screen_width, screen_height), pygame.FULLSCREEN)
+        self.screen: pygame.Surface = pygame.display.set_mode(
+            (screen_width, screen_height), pygame.FULLSCREEN)
         self.font: pygame.font.Font = pygame.font.SysFont("Comic Sans", 30)
-        self.black_stone_image: pygame.Surface = pygame.image.load("black_stone.png")
-        self.white_stone_image: pygame.Surface = pygame.image.load("white_stone.png")
+        self.black_stone_image: pygame.Surface = pygame.image.load(
+            "black_stone.png")
+        self.white_stone_image: pygame.Surface = pygame.image.load(
+            "white_stone.png")
 
         new_size: int = int(STONE_RADIUS * 2 * self.stone_scale_factor)
-        self.black_stone_image = pygame.transform.scale(self.black_stone_image, (new_size, new_size))
-        self.white_stone_image = pygame.transform.scale(self.white_stone_image, (new_size, new_size))
+        self.black_stone_image = pygame.transform.scale(self.black_stone_image,
+                                                        (new_size, new_size))
+        self.white_stone_image = pygame.transform.scale(self.white_stone_image,
+                                                        (new_size, new_size))
 
         self.board_offset_x: int = (screen_width - BOARD_WIDTH) // 2
         self.board_offset_y: int = (screen_height - BOARD_WIDTH) // 2
@@ -67,16 +72,20 @@ class Game:
                 end_point.x + self.board_offset_x,
                 end_point.y + self.board_offset_y,
             )
-            pygame.draw.line(self.screen, (BLACK.r, BLACK.g, BLACK.b), (start_point_screen.x, start_point_screen.y),
+            pygame.draw.line(self.screen, (BLACK.r, BLACK.g, BLACK.b),
+                             (start_point_screen.x, start_point_screen.y),
                              (end_point_screen.x, end_point_screen.y))
 
-        guide_dots: List[int] = [3, self.size // 2, self.size - 4]
+        guide_dots: list[int] = [3, self.size // 2, self.size - 4]
         for col, row in itertools.product(guide_dots, guide_dots):
             point: Point = Point(0, 0)
             point = point.colrow_to_point(col, row, self.size)
-            res_point = Point(point.x + self.board_offset_x, point.y + self.board_offset_y)
-            gfxdraw.aacircle(self.screen, res_point.x, res_point.y, DOT_RADIUS, (BLACK.r, BLACK.g, BLACK.b))
-            gfxdraw.filled_circle(self.screen, res_point.x, res_point.y, DOT_RADIUS, (BLACK.r, BLACK.g, BLACK.b))
+            res_point = Point(point.x + self.board_offset_x,
+                              point.y + self.board_offset_y)
+            gfxdraw.aacircle(self.screen, res_point.x, res_point.y, DOT_RADIUS,
+                             (BLACK.r, BLACK.g, BLACK.b))
+            gfxdraw.filled_circle(self.screen, res_point.x, res_point.y,
+                                  DOT_RADIUS, (BLACK.r, BLACK.g, BLACK.b))
 
     def _pass_turn(self) -> None:
         self.black_turn = not self.black_turn
@@ -145,15 +154,17 @@ class Game:
         if not capture_happened:
             group = None
             # Check if the recently placed stone's group has no liberties
-            for current_group in self.logic.get_stone_groups(self.board, self_color):
+            for current_group in self.logic.get_stone_groups(self.board,
+                                                             self_color):
                 if Point(col, row) in current_group:
                     group = current_group
                     break
-            if group and self.logic.stone_group_has_no_liberties(self.board, group):
+            if group and self.logic.stone_group_has_no_liberties(self.board,
+                                                                 group):
                 self.board[col, row] = 0
 
     def _computer_move(self) -> None:
-        valid_moves: List[Point] = []
+        valid_moves: list[Point] = []
         for col in range(self.size):
             for row in range(self.size):
                 if self.logic.is_valid_move(col, row, self.board):
@@ -165,7 +176,8 @@ class Game:
             self.board[chosen_col, chosen_row] = 2
             self._handle_captures(chosen_col, chosen_row)
 
-            self.move_log.insert(0, f"Чёрные: {chosen_col + 1}, {chosen_row + 1}")
+            self.move_log.insert(0,
+                                 f"Чёрные: {chosen_col + 1}, {chosen_row + 1}")
             self.move_log = self.move_log[:4]
 
             self.draw()
@@ -186,10 +198,12 @@ class Game:
                 temp_board[col, row] = 2  # Black stone
 
                 # Simulate capturing opponent's stones
-                captures: int = self._simulate_captures(temp_board, col, row, opponent_color="white")
+                captures: int = self._simulate_captures(temp_board, col, row,
+                                                        opponent_color="white")
 
                 # Count liberties for the group after the move
-                group: Set[Point] = self.logic.get_group(temp_board, Point(col, row))
+                group: Set[Point] = self.logic.get_group(temp_board,
+                                                         Point(col, row))
                 liberties: int = self.logic.count_liberties(temp_board, group)
 
                 # Evaluate the move: prioritize captures, then liberties
@@ -213,8 +227,10 @@ class Game:
                     temp_board[col, row] = 2  # Black stone
 
                     # Count liberties for the group after the move
-                    group: Set[Point] = self.logic.get_group(temp_board, Point(col, row))
-                    liberties: int = self.logic.count_liberties(temp_board, group)
+                    group: Set[Point] = self.logic.get_group(temp_board,
+                                                             Point(col, row))
+                    liberties: int = self.logic.count_liberties(temp_board,
+                                                                group)
 
                     # Select the move with the highest number of liberties
                     if liberties > max_liberties:
@@ -223,8 +239,9 @@ class Game:
 
         # If no criteria matched, choose a random valid move
         if best_move is None:
-            valid_moves: List[Point] = [
-                Point(col, row) for col in range(self.size) for row in range(self.size)
+            valid_moves: list[Point] = [
+                Point(col, row) for col in range(self.size) for row in
+                range(self.size)
                 if self.logic.is_valid_move(col, row, self.board)
             ]
             if valid_moves:
@@ -235,7 +252,8 @@ class Game:
             chosen_col, chosen_row = best_move.x, best_move.y
             self.board[chosen_col, chosen_row] = 2  # Place black stone
             self._handle_captures(chosen_col, chosen_row)  # Handle captures
-            self.move_log.insert(0, f"Чёрные: {chosen_col + 1}, {chosen_row + 1}")
+            self.move_log.insert(0,
+                                 f"Чёрные: {chosen_col + 1}, {chosen_row + 1}")
             if len(self.move_log) > 4:
                 self.move_log.pop()
             self.draw()  # Update the screen
@@ -243,25 +261,31 @@ class Game:
         else:
             print("Компьютер не смог найти ход.")  # For debugging
 
-    def _simulate_captures(self, temp_board: np.ndarray, col: int, row: int, opponent_color: str) -> int:
+    def _simulate_captures(self, temp_board: np.ndarray, col: int, row: int,
+                           opponent_color: str) -> int:
         captures: int = 0
-        opponent_groups: Iterable[Set[Point]] = self.logic.get_stone_groups(temp_board, opponent_color)
+        opponent_groups: Iterable[Set[Point]] = self.logic.get_stone_groups(
+            temp_board, opponent_color)
         for group in opponent_groups:
             if self.logic.stone_group_has_no_liberties(temp_board, group):
                 captures += len(group)
                 for point in group:
-                    temp_board[point.x, point.y] = 0  # Capture opponent's stones
+                    temp_board[
+                        point.x, point.y] = 0  # Capture opponent's stones
         return captures
 
-    def _evaluate_move_captures(self, temp_board: np.ndarray, col: int, row: int, color: str) -> int:
+    def _evaluate_move_captures(self, temp_board: np.ndarray, col: int,
+                                row: int, color: str) -> int:
         opponent_color: str = "white" if color == "black" else "black"
         capture_count: int = 0
 
         # Get adjacent positions to (col, row)
-        adjacent_positions: Set[Point] = self.get_adjacent_positions({Point(col, row)}, self.size)
+        adjacent_positions: Set[Point] = self.get_adjacent_positions(
+            {Point(col, row)}, self.size)
 
         # Get all opponent's stone groups
-        opponent_groups: Iterable[set[Point]] = self.logic.get_stone_groups(temp_board, opponent_color)
+        opponent_groups: Iterable[set[Point]] = self.logic.get_stone_groups(
+            temp_board, opponent_color)
 
         # Check only those groups that are adjacent to the move position
         for group in opponent_groups:
@@ -271,12 +295,14 @@ class Game:
 
         return capture_count
 
-    def _count_liberties(self, temp_board: np.ndarray, col: int, row: int, color: str) -> int:
+    def _count_liberties(self, temp_board: np.ndarray, col: int, row: int,
+                         color: str) -> int:
         groups: Set[Point] = self.logic.get_group(temp_board, Point(col, row))
         liberties: int = self.logic.count_liberties(temp_board, groups)
         return liberties
 
-    def get_adjacent_positions(self, positions: Set[Point], size: int) -> Set[Point]:
+    def get_adjacent_positions(self, positions: Set[Point], size: int) -> Set[
+        Point]:
         adjacent: Set[Point] = set()
 
         for point in positions:
@@ -297,33 +323,45 @@ class Game:
 
     def draw(self) -> None:
         self.clear_screen()
-        self.drawing.draw_stone_image(self.board, self.size, self.board_offset_x, self.board_offset_y, self.screen,
+        self.drawing.draw_stone_image(self.board, self.size,
+                                      self.board_offset_x, self.board_offset_y,
+                                      self.screen,
                                       self.white_stone_image, board_value=1)
-        self.drawing.draw_stone_image(self.board, self.size, self.board_offset_x, self.board_offset_y, self.screen,
+        self.drawing.draw_stone_image(self.board, self.size,
+                                      self.board_offset_x, self.board_offset_y,
+                                      self.screen,
                                       self.black_stone_image, board_value=2)
 
         score_msg: str = (
             f"Захвачено белых камней: {self.prisoners['white']} "
             f"Захвачено чёрных камней: {self.prisoners['black']}"
         )
-        txt: pygame.Surface = self.font.render(score_msg, True, (BLACK.r, BLACK.g, BLACK.b))
-        self.screen.blit(txt, (self.board_offset_x + SCORE_POS[0], self.board_offset_y + SCORE_POS[1]))
+        txt: pygame.Surface = self.font.render(score_msg, True,
+                                               (BLACK.r, BLACK.g, BLACK.b))
+        self.screen.blit(txt, (self.board_offset_x + SCORE_POS[0],
+                               self.board_offset_y + SCORE_POS[1]))
 
         turn_msg1: str = (
             f"{'Белые' if not self.black_turn else 'Чёрные'} ходят. "
             "Нажмите на левую кнопку мыши, чтобы"
         )
         turn_msg2: str = 'поставить камень. Нажмите З, чтобы пропустить ход'
-        txt1: pygame.Surface = self.font.render(turn_msg1, True, (BLACK.r, BLACK.g, BLACK.b))
-        txt2: pygame.Surface = self.font.render(turn_msg2, True, (BLACK.r, BLACK.g, BLACK.b))
-        self.screen.blit(txt1, (self.board_offset_x + BOARD_BORDER, self.board_offset_y + 10))
-        self.screen.blit(txt2, (self.board_offset_x + BOARD_BORDER, self.board_offset_y + 50))
+        txt1: pygame.Surface = self.font.render(turn_msg1, True,
+                                                (BLACK.r, BLACK.g, BLACK.b))
+        txt2: pygame.Surface = self.font.render(turn_msg2, True,
+                                                (BLACK.r, BLACK.g, BLACK.b))
+        self.screen.blit(txt1, (
+            self.board_offset_x + BOARD_BORDER, self.board_offset_y + 10))
+        self.screen.blit(txt2, (
+            self.board_offset_x + BOARD_BORDER, self.board_offset_y + 50))
 
         log_text: str = "Лог ходов: " + ", ".join(self.move_log[:4])
-        log_rendered: pygame.Surface = self.font.render(log_text, True, (BLACK.r, BLACK.g, BLACK.b))
+        log_rendered: pygame.Surface = self.font.render(log_text, True, (
+            BLACK.r, BLACK.g, BLACK.b))
         self.screen.blit(
             log_rendered,
-            (self.board_offset_x + BOARD_BORDER, self.board_offset_y + BOARD_WIDTH - BOARD_BORDER + 60)
+            (self.board_offset_x + BOARD_BORDER,
+             self.board_offset_y + BOARD_WIDTH - BOARD_BORDER + 60)
         )
 
         esc_button_rect: pygame.Rect = pygame.Rect(10, 10, 50, 50)
@@ -332,16 +370,21 @@ class Game:
         else:
             pygame.draw.rect(self.screen, (200, 200, 200), esc_button_rect)
 
-        pygame.draw.line(self.screen, (BLACK.r, BLACK.g, BLACK.b), (15, 15), (55, 55), 3)
-        pygame.draw.line(self.screen, (BLACK.r, BLACK.g, BLACK.b), (15, 55), (55, 15), 3)
-        esc_text: pygame.Surface = self.font.render("ESC", True, (BLACK.r, BLACK.g, BLACK.b))
+        pygame.draw.line(self.screen, (BLACK.r, BLACK.g, BLACK.b), (15, 15),
+                         (55, 55), 3)
+        pygame.draw.line(self.screen, (BLACK.r, BLACK.g, BLACK.b), (15, 55),
+                         (55, 15), 3)
+        esc_text: pygame.Surface = self.font.render("ESC", True, (
+            BLACK.r, BLACK.g, BLACK.b))
         self.screen.blit(esc_text, (6, 60))
 
-        self.drawing.draw_esc_button(self.esc_button_hovered, self.previous_screen, self.font, self.screen)
+        self.drawing.draw_esc_button(self.esc_button_hovered,
+                                     self.previous_screen, self.font,
+                                     self.screen)
         pygame.display.flip()
 
     def update(self) -> Optional[bool]:
-        events: List[pygame.event.Event] = pygame.event.get()
+        events: list[pygame.event.Event] = pygame.event.get()
         for event in events:
             if event.type == pygame.MOUSEBUTTONUP:
                 if event.button == 1:
@@ -378,21 +421,28 @@ class Game:
 
 class Draw:
     @staticmethod
-    def draw_esc_button(esc_button_hovered, previous_screen, font, screen) -> None:
+    def draw_esc_button(esc_button_hovered, previous_screen, font,
+                        screen) -> None:
         esc_button_rect: pygame.Rect = pygame.Rect(10, 10, 50, 50)
         button_color: Rgb = BUTTON_HOVER_COLOR if esc_button_hovered else BUTTON_COLOR
         assert previous_screen is not None  # For type checker
-        pygame.draw.rect(previous_screen, (button_color.r, button_color.g, button_color.b), esc_button_rect)
-        pygame.draw.line(previous_screen, (BLACK.r, BLACK.g, BLACK.b), (15, 15), (55, 55), 3)
-        pygame.draw.line(previous_screen, (BLACK.r, BLACK.g, BLACK.b), (15, 55), (55, 15), 3)
-        esc_text: pygame.Surface = font.render("ESC", True, (BLACK.r, BLACK.g, BLACK.b))
+        pygame.draw.rect(previous_screen,
+                         (button_color.r, button_color.g, button_color.b),
+                         esc_button_rect)
+        pygame.draw.line(previous_screen, (BLACK.r, BLACK.g, BLACK.b),
+                         (15, 15), (55, 55), 3)
+        pygame.draw.line(previous_screen, (BLACK.r, BLACK.g, BLACK.b),
+                         (15, 55), (55, 15), 3)
+        esc_text: pygame.Surface = font.render("ESC", True,
+                                               (BLACK.r, BLACK.g, BLACK.b))
         previous_screen.blit(esc_text, (6, 60))
 
         screen.blit(previous_screen, esc_button_rect, esc_button_rect)
         pygame.display.update(esc_button_rect)
 
     @staticmethod
-    def draw_stone_image(board, size, board_offset_x, board_offset_y, screen, stone_image: pygame.Surface,
+    def draw_stone_image(board, size, board_offset_x, board_offset_y, screen,
+                         stone_image: pygame.Surface,
                          board_value: int) -> None:
         for col, row in zip(*np.where(board == board_value)):
             point: Point = Point(0, 0)
@@ -400,38 +450,50 @@ class Draw:
             point = Point(point.x + board_offset_x, point.y + board_offset_y)
             screen.blit(
                 stone_image,
-                (point.x - stone_image.get_width() // 2, point.y - stone_image.get_height() // 2)
+                (point.x - stone_image.get_width() // 2,
+                 point.y - stone_image.get_height() // 2)
             )
 
-    def draw(self, board, size, board_offset_x, board_offset_y, screen, black_stone_image, white_stone_image, prisoners,
-             font, black_turn, move_log, esc_button_hovered, previous_screen, start_points, end_points) -> None:
-        self.clear_screen(previous_screen, screen, start_points, end_points, board_offset_x, board_offset_y, size)
-        self.draw_stone_image(board, size, board_offset_x, board_offset_y, screen, white_stone_image, board_value=1)
-        self.draw_stone_image(board, size, board_offset_x, board_offset_y, screen,
+    def draw(self, board, size, board_offset_x, board_offset_y, screen,
+             black_stone_image, white_stone_image, prisoners,
+             font, black_turn, move_log, esc_button_hovered, previous_screen,
+             start_points, end_points) -> None:
+        self.clear_screen(previous_screen, screen, start_points, end_points,
+                          board_offset_x, board_offset_y, size)
+        self.draw_stone_image(board, size, board_offset_x, board_offset_y,
+                              screen, white_stone_image, board_value=1)
+        self.draw_stone_image(board, size, board_offset_x, board_offset_y,
+                              screen,
                               black_stone_image, board_value=2)
 
         score_msg: str = (
             f"Захвачено белых камней: {prisoners['white']} "
             f"Захвачено чёрных камней: {prisoners['black']}"
         )
-        txt: pygame.Surface = font.render(score_msg, True, (BLACK.r, BLACK.g, BLACK.b))
-        screen.blit(txt, (board_offset_x + SCORE_POS[0], board_offset_y + SCORE_POS[1]))
+        txt: pygame.Surface = font.render(score_msg, True,
+                                          (BLACK.r, BLACK.g, BLACK.b))
+        screen.blit(txt, (
+            board_offset_x + SCORE_POS[0], board_offset_y + SCORE_POS[1]))
 
         turn_msg1: str = (
             f"{'Белые' if not black_turn else 'Чёрные'} ходят. "
             "Нажмите на левую кнопку мыши, чтобы"
         )
         turn_msg2: str = 'поставить камень. Нажмите З, чтобы пропустить ход'
-        txt1: pygame.Surface = font.render(turn_msg1, True, (BLACK.r, BLACK.g, BLACK.b))
-        txt2: pygame.Surface = font.render(turn_msg2, True, (BLACK.r, BLACK.g, BLACK.b))
+        txt1: pygame.Surface = font.render(turn_msg1, True,
+                                           (BLACK.r, BLACK.g, BLACK.b))
+        txt2: pygame.Surface = font.render(turn_msg2, True,
+                                           (BLACK.r, BLACK.g, BLACK.b))
         screen.blit(txt1, (board_offset_x + BOARD_BORDER, board_offset_y + 10))
         screen.blit(txt2, (board_offset_x + BOARD_BORDER, board_offset_y + 50))
 
         log_text: str = "Лог ходов: " + ", ".join(move_log[:4])
-        log_rendered: pygame.Surface = font.render(log_text, True, (BLACK.r, BLACK.g, BLACK.b))
+        log_rendered: pygame.Surface = font.render(log_text, True,
+                                                   (BLACK.r, BLACK.g, BLACK.b))
         screen.blit(
             log_rendered,
-            (board_offset_x + BOARD_BORDER, board_offset_y + BOARD_WIDTH - BOARD_BORDER + 60)
+            (board_offset_x + BOARD_BORDER,
+             board_offset_y + BOARD_WIDTH - BOARD_BORDER + 60)
         )
 
         esc_button_rect: pygame.Rect = pygame.Rect(10, 10, 50, 50)
@@ -440,16 +502,20 @@ class Draw:
         else:
             pygame.draw.rect(screen, (200, 200, 200), esc_button_rect)
 
-        pygame.draw.line(screen, (BLACK.r, BLACK.g, BLACK.b), (15, 15), (55, 55), 3)
-        pygame.draw.line(screen, (BLACK.r, BLACK.g, BLACK.b), (15, 55), (55, 15), 3)
-        esc_text: pygame.Surface = font.render("ESC", True, (BLACK.r, BLACK.g, BLACK.b))
+        pygame.draw.line(screen, (BLACK.r, BLACK.g, BLACK.b), (15, 15),
+                         (55, 55), 3)
+        pygame.draw.line(screen, (BLACK.r, BLACK.g, BLACK.b), (15, 55),
+                         (55, 15), 3)
+        esc_text: pygame.Surface = font.render("ESC", True,
+                                               (BLACK.r, BLACK.g, BLACK.b))
         screen.blit(esc_text, (6, 60))
 
         self.draw_esc_button(esc_button_hovered, previous_screen, font, screen)
         pygame.display.flip()
 
     @staticmethod
-    def clear_screen(previous_screen, screen, start_points, end_points, board_offset_x, board_offset_y, size) -> None:
+    def clear_screen(previous_screen, screen, start_points, end_points,
+                     board_offset_x, board_offset_y, size) -> None:
         assert previous_screen is not None
         previous_screen.blit(screen, (0, 0))
         screen.fill((BOARD_BROWN.r, BOARD_BROWN.g, BOARD_BROWN.b))
@@ -462,13 +528,17 @@ class Draw:
                 end_point.x + board_offset_x,
                 end_point.y + board_offset_y,
             )
-            pygame.draw.line(screen, (BLACK.r, BLACK.g, BLACK.b), (start_point_screen.x, start_point_screen.y),
+            pygame.draw.line(screen, (BLACK.r, BLACK.g, BLACK.b),
+                             (start_point_screen.x, start_point_screen.y),
                              (end_point_screen.x, end_point_screen.y))
 
-        guide_dots: List[int] = [3, size // 2, size - 4]
+        guide_dots: list[int] = [3, size // 2, size - 4]
         for col, row in itertools.product(guide_dots, guide_dots):
             point: Point = Point(0, 0)
             point = point.colrow_to_point(col, row, size)
-            res_point = Point(point.x + board_offset_x, point.y + board_offset_y)
-            gfxdraw.aacircle(screen, res_point.x, res_point.y, DOT_RADIUS, (BLACK.r, BLACK.g, BLACK.b))
-            gfxdraw.filled_circle(screen, res_point.x, res_point.y, DOT_RADIUS, (BLACK.r, BLACK.g, BLACK.b))
+            res_point = Point(point.x + board_offset_x,
+                              point.y + board_offset_y)
+            gfxdraw.aacircle(screen, res_point.x, res_point.y, DOT_RADIUS,
+                             (BLACK.r, BLACK.g, BLACK.b))
+            gfxdraw.filled_circle(screen, res_point.x, res_point.y, DOT_RADIUS,
+                                  (BLACK.r, BLACK.g, BLACK.b))
