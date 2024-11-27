@@ -1,6 +1,6 @@
 # game_menu.py
 import pygame
-from typing import List, Tuple, Optional
+from typing import List, Optional
 from settings import *
 import sys
 from rgb import Rgb
@@ -80,7 +80,7 @@ class Game_menu:
             self.screen.blit(mode_text, rect)
         return mode_rects
 
-    def _handle_events(self, size_rects: list[pygame.Rect], mode_rects: list[pygame.Rect]) -> Optional[Tuple[int, str]]:
+    def _handle_events(self, size_rects: list[pygame.Rect], mode_rects: list[pygame.Rect]) -> Optional[tuple[int, str]]:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -108,7 +108,7 @@ class Game_menu:
                         sys.exit()
         return None
 
-    def show_main_menu(self) -> Tuple[int, str]:
+    def show_main_menu(self) -> tuple[int, str]:
         while True:
             self.screen.fill((WHITE.r, WHITE.g, WHITE.b))
 
@@ -120,6 +120,6 @@ class Game_menu:
 
             pygame.display.flip()
 
-            result: Optional[Tuple[int, str]] = self._handle_events(size_rects, mode_rects)
+            result: Optional[tuple[int, str]] = self._handle_events(size_rects, mode_rects)
             if result:
                 return result
