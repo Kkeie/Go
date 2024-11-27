@@ -10,6 +10,7 @@ from settings import *
 class Game_logic:
     def __init__(self, size: int) -> None:
         self.size = size
+
     def get_grid_points(self, size: int) -> tuple[list[Point], list[Point]]:
         end_points: list[Point] = []
         start_points: list[Point] = []
@@ -32,22 +33,26 @@ class Game_logic:
             start_points.append(Point(x, y))
         return start_points, end_points
 
-    def stone_group_has_no_liberties(self, board: np.ndarray, group: set[Point]) -> bool:
+    def stone_group_has_no_liberties(self, board: np.ndarray,
+                                     group: set[Point]) -> bool:
         for point in group:
             if point.x > 0 and board[point.x - 1, point.y] == 0:
                 return False
             if point.y > 0 and board[point.x, point.y - 1] == 0:
                 return False
-            if point.x < board.shape[0] - 1 and board[point.x + 1, point.y] == 0:
+            if point.x < board.shape[0] - 1 and board[
+                point.x + 1, point.y] == 0:
                 return False
-            if point.y < board.shape[0] - 1 and board[point.x, point.y + 1] == 0:
+            if point.y < board.shape[0] - 1 and board[
+                point.x, point.y + 1] == 0:
                 return False
         return True
 
     from typing import Iterable
     from point import Point  # Импортируем ваш класс Point
 
-    def get_stone_groups(self, board: np.ndarray, color: str) -> Iterable[set[Point]]:
+    def get_stone_groups(self, board: np.ndarray, color: str) -> Iterable[
+        set[Point]]:
         """
         Возвращает группы камней указанного цвета на доске.
 
@@ -65,8 +70,10 @@ class Game_logic:
         stones = set(zip(xs, ys))  # Преобразуем координаты в набор
         all_spaces = set(itertools.product(range(size), range(size)))
         stones_to_remove = all_spaces - stones
-        graph.remove_nodes_from(stones_to_remove)  # Удаляем узлы, не принадлежащие камням
-        return list(set(Point(x, y) for x, y in group) for group in nx.connected_components(graph))
+        graph.remove_nodes_from(
+            stones_to_remove)  # Удаляем узлы, не принадлежащие камням
+        return list(set(Point(x, y) for x, y in group) for group in
+                    nx.connected_components(graph))
 
     def get_group(self, board: np.ndarray, position: Point) -> set[Point]:
 
@@ -83,7 +90,8 @@ class Game_logic:
                 continue
             group.add(current)
             for neighbor in self.get_adjacent_positions({current}, self.size):
-                if board[neighbor.x, neighbor.y] == color and neighbor not in group:
+                if board[
+                    neighbor.x, neighbor.y] == color and neighbor not in group:
                     stack.append(neighbor)
 
         result_points = set()
@@ -100,7 +108,8 @@ class Game_logic:
                     liberties.add(neighbor)
         return len(liberties)
 
-    def get_adjacent_positions(self, positions: set[Point], size: int) -> set[Point]:
+    def get_adjacent_positions(self, positions: set[Point], size: int) -> set[
+        Point]:
 
         adjacent = set()
         for point in positions:
@@ -116,10 +125,10 @@ class Game_logic:
         # Удаляем исходные позиции, чтобы оставить только соседние
         adjacent.difference_update(positions)
         return adjacent
+
     def is_valid_move(self, col: int, row: int, board: np.ndarray) -> bool:
         if col < 0 or col >= board.shape[0]:
             return False
         if row < 0 or row >= board.shape[0]:
             return False
         return board[col, row] == 0
-
