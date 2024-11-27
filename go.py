@@ -1,16 +1,14 @@
 import pygame as pg
-from Game_menu import Game_menu
-import Game
+from game_menu import Game_menu
+from game import Game  # Убедитесь, что импорт корректный
 
 
 def start_game() -> None:
     while True:
-        game = Game.Game(size=8, mode="Игрок против Игрока")  # Временные значения
-        game.init_pygame()
         game_menu = Game_menu()
 
-        selected_size, selected_mode = Game_menu.show_main_menu(game_menu)
-        game = Game.Game(size=selected_size, mode=selected_mode)
+        selected_size, selected_mode = game_menu.show_main_menu()
+        game = Game(size=selected_size, mode=selected_mode)
         game.init_pygame()
         game.clear_screen()
         game.draw()
@@ -19,7 +17,7 @@ def start_game() -> None:
             if game.update():  # Проверка возврата в меню
                 break  # Выход из игрового цикла для возврата в меню
 
-            pg.time.wait(100)
+            pg.time.wait(100)  # Можно заменить на более эффективное управление кадрами
 
 
 if __name__ == "__main__":
