@@ -31,6 +31,11 @@ class Game:
         self.previous_screen: Optional[pygame.Surface] = None
         self.mouse_pos: Point = Point(0, 0)
         self.drawing = Draw()
+        self.last_move = Point(0, 0)
+        self.board_that_could_redo = None
+        self.move_log_redo = self.move_log.copy()
+        self.last_move_board = self.board.copy()
+        self.redo_flag = None
 
     def _calculate_scale_factor(self) -> float:
         return board_scale[self.size]
@@ -102,9 +107,9 @@ class Game:
         col, row = point.point_to_colrow(self.size)
         if not self.logic.is_valid_move(col, row, self.board):
             return
-
-        # Устанавливаем камень на доске
+        self.last_move_board = self.board.copy()
         self.board[col, row] = 1 if not self.black_turn else 2
+        self.redo_flag = False
         move_description = f"{'Белые' if not self.black_turn else 'Чёрные'}: {col + 1},{row + 1}"
         self.move_log.insert(0, move_description)
         if len(self.move_log) > 4:
@@ -402,6 +407,10 @@ class Game:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_p:
                     self._pass_turn()
+                if event.key == pygame.K_u:
+                    self.undo_move()
+                if event.key == pygame.K_r:
+                    self.redo_move()
 
         mouse_x: int
         mouse_y: int
@@ -417,6 +426,30 @@ class Game:
                 self.draw()
 
         pygame.time.wait(100)
+
+    def undo_move(self):
+        if self.last_move_board is not self.board:
+            self.redo_flag= True
+            if len(self.move_log) != 0:
+                self.move_log_redo = self.move_log.copy()
+                self.move_log.pop(0)
+            self.board_that_could_redo = self.board.copy()
+            self.board = self.last_move_board
+            if not self.black_turn:
+                self.black_turn = True
+            else:
+                self.black_turn = False
+            self.draw()
+    def redo_move(self):
+        if self.board_that_could_redo is not None and self.redo_flag:
+            self.board = self.board_that_could_redo
+            self.move_log = self.move_log_redo
+            if not self.black_turn:
+                self.black_turn = True
+            else:
+                self.black_turn = False
+            self.draw()
+
 
 
 class Draw:
