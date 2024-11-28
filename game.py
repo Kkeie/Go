@@ -45,8 +45,7 @@ class Game:
         screen_info: pygame.display.Info = pygame.display.Info()
         screen_width: int = screen_info.current_w
         screen_height: int = screen_info.current_h
-        self.screen: pygame.Surface = pygame.display.set_mode(
-            (screen_width, screen_height), pygame.FULLSCREEN)
+        self.screen: pygame.Surface = pygame.display.set_mode((screen_width, screen_height), pygame.FULLSCREEN)
         self.font: pygame.font.Font = pygame.font.SysFont("Comic Sans", 30)
         self.black_stone_image: pygame.Surface = pygame.image.load(
             "black_stone.png")
@@ -119,7 +118,7 @@ class Game:
         self._handle_captures(col, row)
 
         # Режим игры
-        if self.mode == game_modes.easy.value:
+        if self.mode == GameModes.EASY.value:
             if not self.black_turn:
                 # Ход компьютера в "легком" режиме
                 self.black_turn = True
@@ -128,7 +127,7 @@ class Game:
                 self._computer_move()
             else:
                 self.black_turn = False
-        elif self.mode == game_modes.difficulty.value:
+        elif self.mode == GameModes.DIFFICULTY.value:
             if not self.black_turn:
                 # Ход компьютера в "сложном" режиме
                 self.black_turn = True
@@ -137,7 +136,7 @@ class Game:
                 self._smart_computer_move()  # Вызов сложного хода компьютера
             else:
                 self.black_turn = False
-        elif self.mode == game_modes.PvP.value:
+        elif self.mode == GameModes.PVP.value:
             # Если PVP, переключаем ход
             self.black_turn = not self.black_turn
 
@@ -203,8 +202,7 @@ class Game:
                 temp_board[col, row] = 2  # Black stone
 
                 # Simulate capturing opponent's stones
-                captures: int = self._simulate_captures(temp_board, col, row,
-                                                        opponent_color="white")
+                captures: int = self._simulate_captures(temp_board, opponent_color="white")
 
                 # Count liberties for the group after the move
                 group: Set[Point] = self.logic.get_group(temp_board,
@@ -266,8 +264,7 @@ class Game:
         else:
             print("Компьютер не смог найти ход.")  # For debugging
 
-    def _simulate_captures(self, temp_board: np.ndarray, col: int, row: int,
-                           opponent_color: str) -> int:
+    def _simulate_captures(self, temp_board: np.ndarray, opponent_color: str) -> int:
         captures: int = 0
         opponent_groups: Iterable[Set[Point]] = self.logic.get_stone_groups(
             temp_board, opponent_color)
@@ -300,14 +297,12 @@ class Game:
 
         return capture_count
 
-    def _count_liberties(self, temp_board: np.ndarray, col: int, row: int,
-                         color: str) -> int:
+    def _count_liberties(self, temp_board: np.ndarray, col: int, row: int) -> int:
         groups: Set[Point] = self.logic.get_group(temp_board, Point(col, row))
         liberties: int = self.logic.count_liberties(temp_board, groups)
         return liberties
 
-    def get_adjacent_positions(self, positions: Set[Point], size: int) -> Set[
-        Point]:
+    def get_adjacent_positions(self, positions: Set[Point], size: int) -> set[Point]:
         adjacent: Set[Point] = set()
 
         for point in positions:
@@ -429,7 +424,7 @@ class Game:
 
     def undo_move(self):
         if self.last_move_board is not self.board:
-            self.redo_flag= True
+            self.redo_flag = True
             if len(self.move_log) != 0:
                 self.move_log_redo = self.move_log.copy()
                 self.move_log.pop(0)
@@ -440,6 +435,7 @@ class Game:
             else:
                 self.black_turn = False
             self.draw()
+
     def redo_move(self):
         if self.board_that_could_redo is not None and self.redo_flag:
             self.board = self.board_that_could_redo
@@ -449,7 +445,6 @@ class Game:
             else:
                 self.black_turn = False
             self.draw()
-
 
 
 class Draw:

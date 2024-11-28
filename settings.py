@@ -18,8 +18,7 @@ antialias_on = True
 board_scale = {8: 1, 9: 0.9, 13: 0.7, 19: 0.5}
 
 
-@dataclass
-class game_modes(enum.Enum):
-    PvP = "Игрок против игрока"
-    easy = "Лёгкий"
-    difficulty = "Сложный"
+class GameModes(enum.StrEnum):
+    PVP = "Игрок против игрока"
+    EASY = "Лёгкий"
+    DIFFICULTY = "Сложный"
