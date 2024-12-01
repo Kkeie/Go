@@ -17,7 +17,7 @@ class Game_menu:
         self.size_spacing: int = 40
         self.mode_spacing: int = 60
         self.BOARD_SIZES: list[int] = [8, 9, 13, 19]
-        self.GAME_MODES: list[str] = ["Игрок против игрока", "Лёгкий", "Сложный"]
+        self.GAME_MODES: list[str] = ["Игрок против игрока", "Лёгкий", "Сложный", "Играть по сети"]
 
     def _draw_title(self) -> None:
         title_text: pygame.Surface = self.title_font.render("GO", True, (BLACK.r, BLACK.g, BLACK.b))
@@ -55,7 +55,7 @@ class Game_menu:
 
         size_rects: list[pygame.Rect] = []
         for board_size in range(len(self.BOARD_SIZES)):
-            color: Rgb = BLACK if board_size == self.selected_size_index else Rgb(150, 150, 150)
+            color: Rgb = Rgb(0, 0, 0) if board_size == self.selected_size_index else Rgb(150, 150, 150)
             size_text: pygame.Surface = self.font.render(f"{self.BOARD_SIZES[board_size]}x{self.BOARD_SIZES[board_size]}", True,
                                                          (color.r, color.g, color.b))
             rect: pygame.Rect = size_text.get_rect(center=(
@@ -72,7 +72,7 @@ class Game_menu:
 
         mode_rects: list[pygame.Rect] = []
         for game_mode in range(len(self.GAME_MODES)):
-            color: Rgb = BLACK if game_mode == self.selected_mode_index else Rgb(150, 150, 150)
+            color: Rgb = Rgb(0, 0, 0) if game_mode == self.selected_mode_index else Rgb(150, 150, 150)
             mode_text: pygame.Surface = self.font.render(self.GAME_MODES[game_mode], True, (color.r, color.g, color.b))
             rect: pygame.Rect = mode_text.get_rect(center=(
                 self.screen.get_width() * 2 // 3, self.screen.get_height() // 2 + 160 + game_mode * (self.mode_spacing + 10)))

@@ -22,3 +22,4 @@ class GameModes(enum.StrEnum):
     PVP = "Игрок против игрока"
     EASY = "Лёгкий"
     DIFFICULTY = "Сложный"
+    ONLINE = "Играть по сети"
