@@ -16,8 +16,7 @@ def start_game() -> None:
             if game.update():  # Проверка возврата в меню
                 break  # Выход из игрового цикла для возврата в меню
 
-            pg.time.wait(
-                100)
+            pg.time.wait(100)
 
 
 if __name__ == "__main__":

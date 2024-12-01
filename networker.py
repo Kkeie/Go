@@ -7,6 +7,8 @@ import select
 import traceback
 from typing import Optional, Tuple
 from settings import *
+from point import Point
+
 class NetworkManager:
     def __init__(self, mode: str, font: pygame.font.Font, screen: pygame.Surface):
         self.mode = mode
@@ -156,11 +158,11 @@ class NetworkManager:
             pygame.draw.rect(self.screen, color, input_rect, 2)
             pygame.display.flip()
 
-    def send_move(self, move_str: str):
+    def send_move(self, move_str: str) -> None:
         if self.conn:
             self.conn.send(move_str.encode())
 
-    def receive_move(self) -> Optional[Tuple[int, int]]:
+    def receive_move(self) -> Optional[Point]:
         if self.conn:
             try:
                 ready_to_read, _, _ = select.select([self.conn], [], [], 0)
@@ -169,7 +171,7 @@ class NetworkManager:
                     if data:
                         move = data.decode().strip()
                         col, row = move.split(',')
-                        return int(col), int(row)
+                        return Point(int(col), int(row))
             except Exception:
                 traceback.print_exc()
                 pygame.quit()

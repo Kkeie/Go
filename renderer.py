@@ -41,7 +41,7 @@ class Renderer:
             )
             pygame.draw.line(self.screen, (BLACK.r, BLACK.g, BLACK.b),
                              (start_point_screen.x, start_point_screen.y),
-                             (end_point_screen.x, end_point_screen.y))
+                             (end_point_screen.x, end_point_screen.y), width=2)
 
         guide_dots: List[int] = [3, self.size // 2, self.size - 4]
         for col, row in itertools.product(guide_dots, guide_dots):

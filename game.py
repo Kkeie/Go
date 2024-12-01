@@ -3,15 +3,17 @@
 import collections
 import random
 import sys
-from typing import Optional, Dict
+from typing import Optional
 
 import numpy as np
 import pygame
-from point import Point
+
 from main_logic import Game_logic
 from networker import NetworkManager
+from point import Point
 from renderer import Renderer
 from settings import *
+
 
 class Game:
     def __init__(self, size: int, mode: str) -> None:
@@ -19,14 +21,14 @@ class Game:
         self.board: np.ndarray = np.zeros((size, size))
         self.size: int = size
         self.black_turn: bool = False
-        self.prisoners: Dict[str, int] = collections.defaultdict(int)
+        self.prisoners: dict[str, int] = collections.defaultdict(int)
         self.start_points, self.end_points = self.logic.get_grid_points(self.size)
         self.mode: str = mode
         self.move_log: list[str] = []
         self.esc_button_hovered: bool = False
-        self.last_move = Point(0, 0)
-        self.redo_flag = None
-        self.last_log = None  # Для функциональности Undo/Redo
+        self.last_move: Point = Point(0, 0)
+        self.redo_flag: bool = False
+        self.last_log: str | None = None
 
         self.screen = None
         self.font = None
@@ -310,7 +312,7 @@ class Game:
             if self.network_manager.conn:
                 move = self.network_manager.receive_move()
                 if move:
-                    col, row = move
+                    col, row = move.x, move.y
                     # Обновляем доску
                     self.board[col, row] = 2 if self.opponent_color == 'black' else 1
                     self._handle_captures(col, row)
@@ -325,7 +327,7 @@ class Game:
 
         pygame.time.wait(100)
 
-    def undo(self):
+    def undo(self) -> None:
         if self.last_move is not None:
             if len(self.move_log) > 0:
                 self.last_log = self.move_log[0]
@@ -341,7 +343,7 @@ class Game:
             self.redo_flag = True
             self.draw()
 
-    def redo(self):
+    def redo(self) -> None:
         if self.redo_flag:
             self.board[self.last_move.x, self.last_move.y] = 2 if self.black_turn else 1
             self.move_log.insert(0, self.last_log)
