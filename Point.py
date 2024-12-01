@@ -1,9 +1,11 @@
+from dataclasses import dataclass
 from typing import Tuple
 import numpy as np
 
 from Settings import *
 
 
+@dataclass
 class Point:
     def __init__(self):
         self.x, self.y = 0, 0
@@ -30,4 +32,3 @@ class Point:
         point.set_x(x)
         point.set_y(y)
         return point
-

@@ -1,3 +1,4 @@
+# Game.py
 import random
 import sys
 import collections
@@ -5,14 +6,20 @@ import pygame
 from pygame import gfxdraw
 import itertools
 import numpy as np
-from Settings import *  # type: ignore
-from MainLogic import Game_logic  # type: ignore
+from Settings import *
+from MainLogic import Game_logic
 from typing import List, Tuple, Optional, Dict, Set
 from Point import Point
-
+import socket
+import select
+import traceback  # Для вывода информации об ошибках
 
 class Game:
     def __init__(self, size: int, mode: str):
+        self.redo_color = None
+        self.redo_flag = None
+        self.last_move = None
+        self.last_log = None
         self.logic: Game_logic = Game_logic(size)
         self.board: np.ndarray = np.zeros((size, size))
         self.size: int = size
@@ -26,7 +33,14 @@ class Game:
         self.move_log: List[str] = []
         self.esc_button_hovered: bool = False
         self.previous_screen: Optional[pygame.Surface] = None
-        self.mouse_pos: Point() = 0
+        self.mouse_pos = Point()  # Исправлена инициализация
+
+        if self.mode == "Играть по сети":
+            self.network_role = None
+            self.player_color = None
+            self.opponent_color = None
+            self.conn = None
+            self.server_socket = None
 
     def _calculate_scale_factor(self) -> float:
         return board_scale[self.size]
@@ -35,26 +49,33 @@ class Game:
         pygame.init()
         screen_info = pygame.display.Info()
         screen_width, screen_height = screen_info.current_w, screen_info.current_h
-        self.screen = pygame.display.set_mode((screen_width, screen_height), pygame.FULLSCREEN)
+        self.screen = pygame.display.set_mode((screen_width - 10, screen_height - 10))  # Оконный режим для отладки
         self.font = pygame.font.SysFont("Comic Sans", 30)
         self.black_stone_image = pygame.image.load("black_stone.png")
         self.white_stone_image = pygame.image.load("white_stone.png")
 
         new_size = int(STONE_RADIUS * 2 * self.stone_scale_factor)
-        self.black_stone_image = pygame.transform.scale(self.black_stone_image, (new_size, new_size))
-        self.white_stone_image = pygame.transform.scale(self.white_stone_image, (new_size, new_size))
+        self.black_stone_image = pygame.transform.scale(
+            self.black_stone_image, (new_size, new_size))
+        self.white_stone_image = pygame.transform.scale(
+            self.white_stone_image, (new_size, new_size))
 
         self.board_offset_x = (screen_width - BOARD_WIDTH) // 2
         self.board_offset_y = (screen_height - BOARD_WIDTH) // 2
 
         self.previous_screen = pygame.Surface(self.screen.get_size())
 
+        if self.mode == "Играть по сети":
+            self.setup_network()
+
     def clear_screen(self) -> None:
         self.previous_screen.blit(self.screen, (0, 0))
         self.screen.fill(BOARD_BROWN)
         for start_point, end_point in zip(self.start_points, self.end_points):
-            start_point = (start_point[0] + self.board_offset_x, start_point[1] + self.board_offset_y)
-            end_point = (end_point[0] + self.board_offset_x, end_point[1] + self.board_offset_y)
+            start_point = (start_point[0] + self.board_offset_x,
+                           start_point[1] + self.board_offset_y)
+            end_point = (end_point[0] + self.board_offset_x,
+                         end_point[1] + self.board_offset_y)
             pygame.draw.line(self.screen, BLACK, start_point, end_point)
         guide_dots = [3, self.size // 2, self.size - 4]
         for col, row in itertools.product(guide_dots, guide_dots):
@@ -65,16 +86,149 @@ class Game:
             gfxdraw.aacircle(self.screen, point.x, point.y, DOT_RADIUS, BLACK)
             gfxdraw.filled_circle(self.screen, point.x, point.y, DOT_RADIUS, BLACK)
 
+    def setup_network(self):
+        choice_made = False
+
+        while not choice_made:
+            self.screen.fill(WHITE)
+            # Создаем кнопки "Создать игру" и "Присоединиться к игре"
+            host_button_rect = pygame.Rect(
+                self.screen.get_width() // 2 - 150, self.screen.get_height() // 2 - 60, 300, 50)
+            join_button_rect = pygame.Rect(
+                self.screen.get_width() // 2 - 150, self.screen.get_height() // 2 + 10, 300, 50)
+
+            pygame.draw.rect(self.screen, BUTTON_COLOR, host_button_rect)
+            pygame.draw.rect(self.screen, BUTTON_COLOR, join_button_rect)
+
+            host_text = self.font.render("Создать игру", True, BLACK)
+            join_text = self.font.render("Присоединиться к игре", True, BLACK)
+
+            self.screen.blit(host_text, (host_button_rect.x + 50, host_button_rect.y + 10))
+            self.screen.blit(join_text, (join_button_rect.x + 20, join_button_rect.y + 10))
+
+            pygame.display.flip()
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == 1:
+                        mouse_x, mouse_y = event.pos
+                        if host_button_rect.collidepoint(mouse_x, mouse_y):
+                            choice_made = True
+                            self.network_role = 'host'
+                            self.player_color = 'black'
+                            self.opponent_color = 'white'
+                            self.black_turn = True  # Черные ходят первыми
+                            self.start_server()
+                        elif join_button_rect.collidepoint(mouse_x, mouse_y):
+                            choice_made = True
+                            self.network_role = 'client'
+                            self.player_color = 'white'
+                            self.opponent_color = 'black'
+                            self.black_turn = True  # Черные ходят первыми
+                            self.connect_to_server()
+
+    def start_server(self):
+        # Создаем серверный сокет
+        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_socket.bind(('', 5000))  # Слушаем на всех интерфейсах на порту 5000
+        self.server_socket.listen(1)  # Ожидаем одно соединение
+        self.server_socket.settimeout(0.1)
+
+        waiting = True
+        while waiting:
+            self.screen.fill(WHITE)
+            waiting_text = self.font.render(
+                "Ожидание подключения оппонента...", True, BLACK)
+            self.screen.blit(
+                waiting_text, (self.screen.get_width() // 2 - 250, self.screen.get_height() // 2))
+            pygame.display.flip()
+
+            try:
+                self.conn, addr = self.server_socket.accept()
+                print("Подключено:", addr)
+                waiting = False
+            except socket.timeout:
+                pass
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+
+    def connect_to_server(self):
+        ip_address = self.get_ip_address()
+        self.conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.conn.settimeout(0.1)
+
+        connected = False
+        while not connected:
+            self.screen.fill(WHITE)
+            connecting_text = self.font.render(
+                f"Подключение к {ip_address}...", True, BLACK)
+            self.screen.blit(
+                connecting_text, (self.screen.get_width() // 2 - 200, self.screen.get_height() // 2))
+            pygame.display.flip()
+
+            try:
+                self.conn.connect((ip_address, 5000))
+                print("Подключено к серверу")
+                connected = True
+            except socket.timeout:
+                pass
+            except Exception as e:
+                print("Ошибка подключения:", e)
+                pygame.quit()
+                sys.exit()
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+
+    def get_ip_address(self):
+        input_active = True
+        user_text = ''
+        base_font = pygame.font.Font(None, 32)
+        input_rect = pygame.Rect(
+            self.screen.get_width() // 2 - 100, self.screen.get_height() // 2, 200, 32)
+        color_active = pygame.Color('lightskyblue3')
+        color_passive = pygame.Color('gray15')
+        color = color_active
+
+        while input_active:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_RETURN:
+                        return user_text
+                    elif event.key == pygame.K_BACKSPACE:
+                        user_text = user_text[:-1]
+                    else:
+                        user_text += event.unicode
+
+            self.screen.fill(WHITE)
+            prompt_text = self.font.render("Введите IP адрес сервера:", True, BLACK)
+            self.screen.blit(prompt_text, (self.screen.get_width() // 2 - 200,
+                                           self.screen.get_height() // 2 - 50))
+            txt_surface = base_font.render(user_text, True, BLACK)
+            width = max(200, txt_surface.get_width() + 10)
+            input_rect.w = width
+            self.screen.blit(txt_surface, (input_rect.x + 5, input_rect.y + 5))
+            pygame.draw.rect(self.screen, color, input_rect, 2)
+            pygame.display.flip()
+
     def _pass_turn(self) -> None:
         self.black_turn = not self.black_turn
         self.draw()
 
     def _handle_stone_placement(self) -> None:
         point = Point()
-        x = 0
-        y = 0
-        if pygame.mouse.get_pressed():
-            x, y = pygame.mouse.get_pos()
+        x, y = pygame.mouse.get_pos()
         x -= self.board_offset_x
         y -= self.board_offset_y
         point.set_x(x)
@@ -83,8 +237,9 @@ class Game:
         if not self.logic.is_valid_move(col, row, self.board):
             return
 
-        # Устанавливаем камень на доске
+        self.last_move = (col, row)
         self.board[col, row] = 1 if not self.black_turn else 2
+        self.redo_flag = False
         move_description = f"{'Белые' if not self.black_turn else 'Чёрные'}: {col + 1},{row + 1}"
         self.move_log.insert(0, move_description)
         if len(self.move_log) > 4:
@@ -93,10 +248,14 @@ class Game:
         # Обрабатываем захват камней, если есть
         self._handle_captures(col, row)
 
-        # Режим игры
-        if self.mode == "Лёгкий":
+        if self.mode == "Играть по сети":
+            # Отправляем ход оппоненту
+            move_str = f"{col},{row}"
+            self.conn.send(move_str.encode())
+            self.black_turn = not self.black_turn
+            self.draw()
+        elif self.mode == "Лёгкий":
             if not self.black_turn:
-                # Ход компьютера в "легком" режиме
                 self.black_turn = True
                 self.draw()
                 pygame.time.wait(1000)
@@ -105,11 +264,10 @@ class Game:
                 self.black_turn = False
         elif self.mode == "Сложный":
             if not self.black_turn:
-                # Ход компьютера в "сложном" режиме
                 self.black_turn = True
                 self.draw()
                 pygame.time.wait(1000)
-                self._smart_computer_move()  # Вызов сложного хода компьютера
+                self._smart_computer_move()
             else:
                 self.black_turn = False
         else:
@@ -239,51 +397,6 @@ class Game:
                     temp_board[i, j] = 0  # Захват камней противника
         return captures
 
-    def _evaluate_move_captures(self, temp_board: np.ndarray, col: int, row: int, color: str) -> int:
-
-        opponent_color = "white" if color == "black" else "black"
-        capture_count = 0
-
-        # Получаем соседние позиции к (col, row)
-        adjacent_positions = self.get_adjacent_positions({(col, row)}, self.size)
-
-        # Получаем все группы камней соперника
-        opponent_groups = self.logic.get_stone_groups(temp_board, opponent_color)
-
-        # Проверяем только те группы, которые прилегают к позиции хода
-        for group in opponent_groups:
-            if group & adjacent_positions:  # Пересекаются ли группы с соседними позициями
-                if self.logic.stone_group_has_no_liberties(temp_board, group):
-                    capture_count += len(group)
-
-        return capture_count
-
-    def _count_liberties(self, temp_board: np.ndarray, col: int, row: int, color: str) -> int:
-
-        group = self.logic.get_group(temp_board, (col, row))
-        liberties = self.logic.count_liberties(temp_board, group)
-        return liberties
-
-    def get_adjacent_positions(self, positions: Set[Tuple[int, int]], size: int) -> Set[Tuple[int, int]]:
-
-        adjacent = set()
-
-        for col, row in positions:
-            # Проверяем каждую из четырех сторон вокруг позиции
-            if col > 0:
-                adjacent.add((col - 1, row))  # слева
-            if col < size - 1:
-                adjacent.add((col + 1, row))  # справа
-            if row > 0:
-                adjacent.add((col, row - 1))  # сверху
-            if row < size - 1:
-                adjacent.add((col, row + 1))  # снизу
-
-        # Исключаем исходные позиции из списка соседних
-        adjacent.difference_update(positions)
-
-        return adjacent
-
     def _draw_stone_image(self, stone_image: pygame.Surface, board: int) -> None:
         for col, row in zip(*np.where(self.board == board)):
             point = Point()
@@ -291,28 +404,34 @@ class Game:
             point.set_x(point.x + self.board_offset_x)
             point.set_y(point.y + self.board_offset_y)
             self.screen.blit(stone_image,
-                             (point.x - stone_image.get_width() // 2, point.y - stone_image.get_height() // 2))
+                             (point.x - stone_image.get_width() // 2,
+                              point.y - stone_image.get_height() // 2))
 
     def draw(self) -> None:
         self.clear_screen()
         self._draw_stone_image(self.white_stone_image, 1)
         self._draw_stone_image(self.black_stone_image, 2)
 
-        score_msg = f"Захвачено белых камней: {self.prisoners['white']} Захвачено чёрных камней: {self.prisoners['black']}"
+        score_msg = f"Захвачено белых камней: {self.prisoners['white']} " \
+                    f"Захвачено чёрных камней: {self.prisoners['black']}"
         txt = self.font.render(score_msg, antialias_on, BLACK)
-        self.screen.blit(txt, (self.board_offset_x + SCORE_POS[0], self.board_offset_y + SCORE_POS[1]))
+        self.screen.blit(txt, (self.board_offset_x + SCORE_POS[0],
+                               self.board_offset_y + SCORE_POS[1]))
 
-        turn_msg1 = f"{'Белые' if not self.black_turn else 'Чёрные'} ходят. Нажмите на левую кнопку мыши, чтобы"
+        turn_msg1 = f"{'Белые' if not self.black_turn else 'Чёрные'} ходят. " \
+                    "Нажмите на левую кнопку мыши, чтобы"
         turn_msg2 = 'поставить камень. Нажмите ESC, чтобы пропустить ход'
         txt1 = self.font.render(turn_msg1, antialias_on, BLACK)
         txt2 = self.font.render(turn_msg2, antialias_on, BLACK)
-        self.screen.blit(txt1, (self.board_offset_x + BOARD_BORDER, self.board_offset_y + 10))
-        self.screen.blit(txt2, (self.board_offset_x + BOARD_BORDER, self.board_offset_y + 50))
+        self.screen.blit(txt1, (self.board_offset_x + BOARD_BORDER,
+                                self.board_offset_y + 10))
+        self.screen.blit(txt2, (self.board_offset_x + BOARD_BORDER,
+                                self.board_offset_y + 50))
 
         log_text = "Лог ходов: " + ", ".join(self.move_log[:4])
         log_rendered = self.font.render(log_text, antialias_on, BLACK)
-        self.screen.blit(log_rendered,
-                         (self.board_offset_x + BOARD_BORDER, self.board_offset_y + BOARD_WIDTH - BOARD_BORDER + 60))
+        self.screen.blit(log_rendered, (self.board_offset_x + BOARD_BORDER,
+                                        self.board_offset_y + BOARD_WIDTH - BOARD_BORDER + 60))
 
         esc_button_rect = pygame.Rect(10, 10, 50, 50)
         if self.esc_button_hovered:
@@ -324,6 +443,9 @@ class Game:
         pygame.draw.line(self.screen, BLACK, (15, 55), (55, 15), 3)
         esc_text = self.font.render("ESC", antialias_on, BLACK)
         self.screen.blit(esc_text, (6, 60))
+
+        if self.mode != "Играть по сети":
+            self._draw_buttons()
 
         self._draw_esc_button()
         pygame.display.flip()
@@ -343,24 +465,90 @@ class Game:
 
     def update(self) -> Optional[bool]:
         events = pygame.event.get()
+
+        # Обрабатываем события независимо от того, чей сейчас ход
         for event in events:
-            if event.type == pygame.MOUSEBUTTONUP:
-                if event.button == 1:
-                    mouse_x, mouse_y = pygame.mouse.get_pos()
-                    esc_button_rect = pygame.Rect(10, 10, 50, 50)
-                    if esc_button_rect.collidepoint(mouse_x, mouse_y):
-                        return True
-                    self._handle_stone_placement()
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_ESCAPE:
                     return True
-            if event.type == pygame.KEYDOWN :
-                if event.key == pygame.K_p:
-                    self._pass_turn()
+            if self.mode == "Играть по сети":
+                if self.player_color == ('black' if self.black_turn else 'white'):
+                    if event.type == pygame.MOUSEBUTTONUP:
+                        if event.button == 1:
+                            mouse_x, mouse_y = pygame.mouse.get_pos()
 
+                            # ESC Button
+                            esc_button_rect = pygame.Rect(10, 10, 50, 50)
+                            if esc_button_rect.collidepoint(mouse_x, mouse_y):
+                                return True
+
+                            # Undo и Redo недоступны в сетевой игре
+                            self._handle_stone_placement()
+            else:
+                # Обработка событий для локальной игры
+                if event.type == pygame.MOUSEBUTTONUP:
+                    if event.button == 1:
+                        mouse_x, mouse_y = pygame.mouse.get_pos()
+
+                        # ESC Button
+                        esc_button_rect = pygame.Rect(10, 10, 50, 50)
+                        if esc_button_rect.collidepoint(mouse_x, mouse_y):
+                            return True
+
+                        # Undo Button
+                        undo_button_rect = pygame.Rect(
+                            10, self.screen.get_height() - 120, 100, 50)
+                        if undo_button_rect.collidepoint(mouse_x, mouse_y):
+                            self.undo()
+
+                        # Redo Button
+                        redo_button_rect = pygame.Rect(
+                            10, self.screen.get_height() - 60, 100, 50)
+                        if redo_button_rect.collidepoint(mouse_x, mouse_y):
+                            self.redo()
+
+                        self._handle_stone_placement()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_p:
+                        self._pass_turn()
+                    if event.key == pygame.K_u:
+                        self.undo()
+                    if event.key == pygame.K_r:
+                        self.redo()
+
+        if self.mode == "Играть по сети":
+            # Обработка сетевых данных
+            if self.player_color != ('black' if self.black_turn else 'white'):
+                # Ход оппонента
+                try:
+                    ready_to_read, _, _ = select.select([self.conn], [], [], 0)
+                    if self.conn in ready_to_read:
+                        data = self.conn.recv(1024)
+                        if data:
+                            move = data.decode().strip()
+                            col, row = move.split(',')
+                            col = int(col)
+                            row = int(row)
+                            # Обновляем доску
+                            self.board[col, row] = 1 if self.opponent_color == 'white' else 2
+                            self._handle_captures(col, row)
+                            move_description = f"{'Белые' if self.opponent_color == 'white' else 'Чёрные'}: {col + 1},{row + 1}"
+                            self.move_log.insert(0, move_description)
+                            if len(self.move_log) > 4:
+                                self.move_log.pop()
+                            self.black_turn = not self.black_turn
+                            self.draw()
+                except Exception as e:
+                    print("Ошибка при обработке хода оппонента:")
+                    traceback.print_exc()
+        else:
+            # Для локальной игры ничего не делаем
+            pass
+
+        # Обновление состояния кнопки ESC
         mouse_x, mouse_y = pygame.mouse.get_pos()
         esc_button_rect = pygame.Rect(10, 10, 50, 50)
         if esc_button_rect.collidepoint(mouse_x, mouse_y):
@@ -372,4 +560,49 @@ class Game:
                 self.esc_button_hovered = False
                 self.draw()
 
+        # Обновляем экран
+        pygame.display.flip()
         pygame.time.wait(100)
+
+    def _draw_buttons(self) -> None:
+        # Получение размеров экрана для динамического размещения кнопок
+        screen_height = self.screen.get_height()
+
+        # Undo Button
+        undo_button_rect = pygame.Rect(10, screen_height - 120, 100, 50)
+        pygame.draw.rect(self.screen, BUTTON_COLOR, undo_button_rect)
+        undo_text = self.font.render("Undo", antialias_on, BLACK)
+        self.screen.blit(undo_text, (undo_button_rect.x + 20, undo_button_rect.y + 10))
+
+        # Redo Button
+        redo_button_rect = pygame.Rect(10, screen_height - 60, 100, 50)
+        pygame.draw.rect(self.screen, BUTTON_COLOR, redo_button_rect)
+        redo_text = self.font.render("Redo", antialias_on, BLACK)
+        self.screen.blit(redo_text, (redo_button_rect.x + 20, redo_button_rect.y + 10))
+
+    def undo(self):
+        if self.last_move is not None:
+            if len(self.move_log) > 0:
+                self.last_log = self.move_log[0]
+            if not self.redo_flag:
+                self.move_log.pop(0)
+            if self.last_move is not None:
+                if self.board[self.last_move[0], self.last_move[1]] == 1:
+                    self.black_turn = False
+                else:
+                    self.black_turn = True
+            if self.last_move is not None:
+                self.board[self.last_move[0], self.last_move[1]] = 0
+            self.redo_flag = True
+            self.draw()
+
+    def redo(self):
+        if self.redo_flag:
+            self.board[self.last_move[0], self.last_move[1]] = 2 if self.black_turn else 1
+            self.move_log.insert(0, self.last_log)
+            if self.black_turn:
+                self.black_turn = False
+            else:
+                self.black_turn = True
+            self.draw()
+            self.redo_flag = False

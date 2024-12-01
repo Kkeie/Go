@@ -1,8 +1,8 @@
+# Game_menu.py
 import pygame
 from typing import List, Tuple, Optional
 from Settings import *
 import sys
-
 
 class Game_menu:
     def __init__(self):
@@ -14,8 +14,8 @@ class Game_menu:
         self.selected_mode_index: int = 0
         self.size_spacing: int = 40
         self.mode_spacing: int = 60
-        self.BOARD_SIZES: List[int] = [8, 9, 13, 19]
-        self.GAME_MODES: List[str] = ["Игрок против игрока", "Лёгкий", "Сложный"]
+        self.BOARD_SIZES: List[int] = BOARD_SIZES
+        self.GAME_MODES: List[str] = GAME_MODES  # Используем GAME_MODES из Settings.py
 
     def _draw_title(self) -> None:
         title_text: pygame.Surface = self.title_font.render("GO", True, BLACK)
