@@ -1,6 +1,6 @@
 import pygame as pg
 from game_menu import Game_menu
-from game import Game  # Убедитесь, что импорт корректный
+from game import Game
 
 
 def start_game() -> None:
@@ -10,7 +10,6 @@ def start_game() -> None:
         selected_size, selected_mode = game_menu.show_main_menu()
         game = Game(size=selected_size, mode=selected_mode)
         game.init_pygame()
-        game.clear_screen()
         game.draw()
 
         while True:

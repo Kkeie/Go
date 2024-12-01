@@ -1,7 +1,6 @@
 import enum
 
 from rgb import Rgb
-from dataclasses import dataclass
 
 BOARD_BROWN = Rgb(186, 138, 69)
 BOARD_WIDTH = 1000
@@ -23,3 +22,8 @@ class GameModes(enum.StrEnum):
     EASY = "Лёгкий"
     DIFFICULTY = "Сложный"
     ONLINE = "Играть по сети"
+
+
+class Colors(enum.StrEnum):
+    BLACK = "black"
+    WHITE = "white"
