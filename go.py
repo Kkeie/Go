@@ -1,18 +1,15 @@
 import pygame as pg
-from Game_menu import Game_menu
-import Game
+from gamemenu import GameMenu
+from game import Game
 
 
 def start_game() -> None:
     while True:
-        game = Game.Game(size=8, mode="Игрок против Игрока")  # Временные значения
-        game.init_pygame()
-        game_menu = Game_menu()
+        menu = GameMenu()
 
-        selected_size, selected_mode = Game_menu.show_main_menu(game_menu)
-        game = Game.Game(size=selected_size, mode=selected_mode)
+        selected_size, selected_mode = menu.show_main_menu()
+        game = Game(size=selected_size, mode=selected_mode)
         game.init_pygame()
-        game.clear_screen()
         game.draw()
 
         while True:
