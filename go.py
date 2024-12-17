@@ -1,13 +1,13 @@
 import pygame as pg
-from game_menu import Game_menu
+from game_menu import game_menu
 from game import Game
 
 
 def start_game() -> None:
     while True:
-        game_menu = Game_menu()
+        menu = game_menu()
 
-        selected_size, selected_mode = game_menu.show_main_menu()
+        selected_size, selected_mode = menu.show_main_menu()
         game = Game(size=selected_size, mode=selected_mode)
         game.init_pygame()
         game.draw()

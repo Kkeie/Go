@@ -1,4 +1,3 @@
-# game_menu.py
 import pygame
 from typing import Optional
 from settings import *
@@ -6,7 +5,7 @@ import sys
 from rgb import Rgb
 
 
-class Game_menu:
+class game_menu:
     def __init__(self):
         pygame.init()
         self.screen: pygame.Surface = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)

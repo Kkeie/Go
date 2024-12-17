@@ -2,14 +2,14 @@ import itertools
 
 import networkx as nx
 import numpy as np
-
+from typing import Iterable
 from point import Point
 from settings import *
 
 
-class Game_logic:
+class game_logic:
     def __init__(self, size: int) -> None:
-        self.size = size
+        self._size = size
 
     def get_grid_points(self, size: int) -> tuple[list[Point], list[Point]]:
         end_points: list[Point] = []
@@ -48,21 +48,8 @@ class Game_logic:
                 return False
         return True
 
-    from typing import Iterable
-    from point import Point  # Импортируем ваш класс Point
-
     def get_stone_groups(self, board: np.ndarray, color: str) -> Iterable[
         set[Point]]:
-        """
-        Возвращает группы камней указанного цвета на доске.
-
-        Args:
-            board (np.ndarray): Игровая доска (2D массив).
-            color (str): Цвет камней ("white" или "black").
-
-        Returns:
-            Iterable[Set[Point]]: Итератор с наборами точек, представляющими группы камней.
-        """
         size = board.shape[0]
         color_code = 1 if color == "white" else 2
         xs, ys = np.where(board == color_code)  # Получаем координаты камней
@@ -89,9 +76,8 @@ class Game_logic:
             if current in group:
                 continue
             group.add(current)
-            for neighbor in self.get_adjacent_positions({current}, self.size):
-                if board[
-                    neighbor.x, neighbor.y] == color and neighbor not in group:
+            for neighbor in self._get_adjacent_positions({current}, self._size):
+                if board[neighbor.x, neighbor.y] == color and neighbor not in group:
                     stack.append(neighbor)
 
         result_points = set()
@@ -103,13 +89,12 @@ class Game_logic:
     def count_liberties(self, board: np.ndarray, group: set[Point]) -> int:
         liberties = set()
         for point in group:
-            for neighbor in self.get_adjacent_positions(group, self.size):
+            for neighbor in self._get_adjacent_positions(group, self._size):
                 if board[neighbor.x, neighbor.y] == 0:
                     liberties.add(neighbor)
         return len(liberties)
 
-    def get_adjacent_positions(self, positions: set[Point], size: int) -> set[
-        Point]:
+    def _get_adjacent_positions(self, positions: set[Point], size: int) -> set[Point]:
 
         adjacent = set()
         for point in positions:
@@ -132,3 +117,23 @@ class Game_logic:
         if row < 0 or row >= board.shape[0]:
             return False
         return board[col, row] == 0
+
+    def point_to_colrow(self, point: Point) -> tuple[int, int]:
+        """
+        Преобразует координаты точки (x, y) в индексы столбца и строки (col, row).
+        """
+        inc = (BOARD_WIDTH - 2 * BOARD_BORDER) / (self._size - 1)
+        x_dist = point.x - BOARD_BORDER
+        y_dist = point.y - BOARD_BORDER
+        col = round(x_dist / inc)
+        row = round(y_dist / inc)
+        return col, row
+
+    def colrow_to_point(self, col: int, row: int) -> 'Point':
+        """
+        Преобразует индексы столбца и строки (col, row) в координаты точки (x, y).
+        """
+        inc = (BOARD_WIDTH - 2 * BOARD_BORDER) / (self._size - 1)
+        x = int(BOARD_BORDER + col * inc)
+        y = int(BOARD_BORDER + row * inc)
+        return Point(x=x, y=y)
