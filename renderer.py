@@ -4,7 +4,6 @@ import pygame
 from pygame import gfxdraw
 import itertools
 import numpy as np
-from typing import List
 from point import Point
 from settings import *
 from main_logic import game_logic
@@ -28,7 +27,7 @@ class Renderer:
 
         self._previous_screen = pygame.Surface(self._screen.get_size())
 
-    def _clear_screen(self, start_points: List[Point], end_points: List[Point]) -> None:
+    def _clear_screen(self, start_points: list[Point], end_points: list[Point]) -> None:
         self._previous_screen.blit(self._screen, (0, 0))
         self._screen.fill((BOARD_BROWN.r, BOARD_BROWN.g, BOARD_BROWN.b))
         for start_point, end_point in zip(start_points, end_points):
@@ -44,7 +43,7 @@ class Renderer:
                              (start_point_screen.x, start_point_screen.y),
                              (end_point_screen.x, end_point_screen.y), width=2)
 
-        guide_dots: List[int] = [3, self._size // 2, self._size - 4]
+        guide_dots: list[int] = [3, self._size // 2, self._size - 4]
         for col, row in itertools.product(guide_dots, guide_dots):
             point: Point = Point(0, 0)
             point = self._game_logic.colrow_to_point(col, row)
@@ -55,8 +54,8 @@ class Renderer:
             gfxdraw.filled_circle(self._screen, res_point.x, res_point.y,
                                   DOT_RADIUS, (BLACK.r, BLACK.g, BLACK.b))
 
-    def draw(self, board: np.ndarray, prisoners: dict[str, int], black_turn: bool, move_log: List[str], esc_button_hovered: bool,
-             start_points: List[Point], end_points: List[Point], mode: str):
+    def draw(self, board: np.ndarray, prisoners: dict[str, int], black_turn: bool, move_log: list[str], esc_button_hovered: bool,
+             start_points: list[Point], end_points: list[Point], mode: str):
         self._clear_screen(start_points, end_points)
         self._draw_stone_image(board, self._white_stone_image, 1)
         self._draw_stone_image(board, self._black_stone_image, 2)

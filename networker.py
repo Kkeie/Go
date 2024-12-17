@@ -5,7 +5,6 @@ import pygame
 import sys
 import select
 import traceback
-from typing import Optional
 from settings import *
 from point import Point
 
@@ -163,7 +162,7 @@ class NetworkManager:
         if self._conn:
             self._conn.send(move_str.encode())
 
-    def receive_move(self) -> Optional[Point]:
+    def receive_move(self) -> Point | None:
         if self._conn:
             try:
                 ready_to_read, _, _ = select.select([self._conn], [], [], 0)

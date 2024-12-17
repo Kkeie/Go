@@ -1,11 +1,8 @@
 import collections
 import random
 import sys
-from typing import Optional
-
 import numpy as np
 import pygame
-
 from main_logic import game_logic
 from networker import NetworkManager
 from point import Point
@@ -26,22 +23,22 @@ class Game:
         self._esc_button_hovered: bool = False
         self._last_move: Point = Point(0, 0)
         self._redo_flag: bool = False
-        self._last_log: Optional[str] = None
+        self._last_log: str | None = None
 
-        self._screen: Optional[pygame.Surface] = None
-        self._font: Optional[pygame.font.Font] = None
-        self._board_offset_x: Optional[int] = None
-        self._board_offset_y: Optional[int] = None
+        self._screen: pygame.Surface | None = None
+        self._font: pygame.font.Font | None = None
+        self._board_offset_x: int | None = None
+        self._board_offset_y: int | None = None
 
-        self._renderer: Optional[Renderer] = None
+        self._renderer: Renderer | None = None
 
         if self._mode == GameModes.ONLINE:
-            self._network_manager: Optional[NetworkManager] = NetworkManager(self._mode, None, None)
+            self._network_manager: NetworkManager | None = NetworkManager(self._mode, None, None)
         else:
-            self._network_manager: Optional[NetworkManager] = None
+            self._network_manager: NetworkManager | None = None
 
-        self._player_color: Optional[str] = None
-        self._opponent_color: Optional[str] = None
+        self._player_color: str | None = None
+        self._opponent_color: str | None = None
 
     def _calculate_scale_factor(self) -> float:
         return board_scale[self._size]
@@ -166,7 +163,7 @@ class Game:
             self._black_turn = False  # Возвращаем ход игроку
 
     def _smart_computer_move(self) -> None:
-        best_move: Optional[tuple[int, int]] = None
+        best_move: tuple[int, int] | None = None
         best_score: int = -1  # Начальная оценка
 
         # Перебор всех возможных ходов
@@ -257,7 +254,7 @@ class Game:
             self._mode
         )
 
-    def update(self) -> Optional[bool]:
+    def update(self) -> bool | None:
         events: list[pygame.event.Event] = pygame.event.get()
         for event in events:
             if event.type == pygame.MOUSEBUTTONUP:

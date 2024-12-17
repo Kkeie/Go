@@ -1,11 +1,11 @@
 import pygame as pg
-from game_menu import game_menu
+from gamemenu import GameMenu
 from game import Game
 
 
 def start_game() -> None:
     while True:
-        menu = game_menu()
+        menu = GameMenu()
 
         selected_size, selected_mode = menu.show_main_menu()
         game = Game(size=selected_size, mode=selected_mode)
